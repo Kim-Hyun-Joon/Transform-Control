@@ -9,6 +9,11 @@ using UnityEngine.Rendering;
 
 public class TransformControl : MonoBehaviour {
 
+    public Vector3 startDir;
+    public Vector3 mouseDir;
+
+    public Transform test;
+    public float testAngle;
     class TransformData {
         public Vector3 position;
         public Quaternion rotation;
@@ -16,42 +21,37 @@ public class TransformControl : MonoBehaviour {
         public Vector3 scalePosition;
         Matrix4x4 matrix;
 
-
+        
         public TransformData(Vector3 p, Quaternion r, Vector3 s) {
             position = p;
             rotation = r;
             scale = s;
 
             //
-            scalePosition = 
+            //scalePosition = 
             //
 
             matrix = Matrix4x4.TRS(p, r, s);
         }
 
         public TransformData(Transform tr) : this(tr.position, tr.rotation, tr.localScale) { }
-
+        
         /*
-         * public TransformData(Transform tr) {
-            position = tr.position;
+        public TransformData(Transform tr) {
+            position = tr.GetChild(0).position;
             rotation = tr.rotation;
             scale = tr.localScale;
 
             //
-            scalePosition = tr.GetChild(0).position;
+            scalePosition = tr.position;
             //
 
             matrix = Matrix4x4.TRS(tr.position, tr.rotation, tr.localScale);
         }
-
+        
         //public TransformData(Transform tr) : this(tr.position, tr.rotation, tr.localScale) { }
+        */
 
-         */
-
-        public Vector3 TransformPoint(Vector3 p) {
-            return matrix.MultiplyPoint(p);
-            // return matrix * p;
-        }
     }
 
     public enum TransformMode {
@@ -150,7 +150,7 @@ public class TransformControl : MonoBehaviour {
         }
 
         if (dragging) {
-            Drag();
+            Drag(start);
         }
     }
 
@@ -170,7 +170,7 @@ public class TransformControl : MonoBehaviour {
 
     Matrix4x4 GetTranform() {
         float scale = 1f;
-        return Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one * scale);
+        return Matrix4x4.TRS(transform.GetChild(0).position, transform.rotation, Vector3.one * scale);
     }
 
     bool PickOrthogonal(Vector3 mouse) {
@@ -282,13 +282,13 @@ public class TransformControl : MonoBehaviour {
         return 0f;
     }
 
-    void Drag() {
+    void Drag(Vector3 start) {
         switch (mode) {
             case TransformMode.Translate:
                 Translate();
                 break;
             case TransformMode.Rotate:
-                Rotate();
+                Rotate(start);
                 break;
             case TransformMode.Scale:
                 Scale();
@@ -322,32 +322,37 @@ public class TransformControl : MonoBehaviour {
     }
     float startRotation = 0f;
     float speed = 15f;
-    void Rotate() {
+    public float angleOffset;
+    void Rotate(Vector3 start) {
         if (selected == TransformDirection.None) return;
+
+        angleOffset = -Mathf.Atan2(start.y, start.x) * Mathf.Rad2Deg;
         /*
-        var matrix = Matrix4x4.TRS(prev.position, prev.rotation, Vector3.one);
+        var dir = start - Camera.main.WorldToScreenPoint(transform.position);
+        var mouseDir = Camera.main.WorldToScreenPoint(Input.mousePosition) - Camera.main.WorldToScreenPoint(transform.position);
+        var test = mouseDir - dir;
 
-        var cur = Input.mousePosition.xy();
-        var cam = Camera.main;
-        var origin = cam.WorldToScreenPoint(matrix.MultiplyPoint(Vector3.zero)).xy();
-        var axis = cam.WorldToScreenPoint(matrix.MultiplyPoint(axes[selected])).xy();
-        var perp = (origin - axis).Perp().normalized;
-        var dir = (cur - start.xy());
-        var proj = dir.Project(perp);
+        angleOffset = Mathf.Atan2(dir.y,dir.x) * Mathf.Rad2Deg;
 
-        var rotateAxis = axes[selected];
-        transform.rotation = prev.rotation * Quaternion.AngleAxis(proj.magnitude * (Vector2.Dot(dir, perp) > 0f ? -90f : 90f), rotateAxis);
+        var angle = -Mathf.Atan2(test.y, test.x) * Mathf.Rad2Deg + angleOffset;
+        Debug.Log(angle);
         */
-        startRotation += Input.GetAxis("Mouse X") * speed;
-        if (Mathf.Abs(startRotation) > 90f) {
-            transform.Rotate(Vector3.up, Mathf.Sign(startRotation) * 90f);
-            startRotation = 0f;
-        }
+        var v = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        Debug.Log(v);
+        var angle = Vector3.Angle(Input.mousePosition, start);
+        
+        
+        transform.GetChild(0).LookAt(new Vector3(v.x,0f,v.z));
 
-        //transform.Rotate(Vector3.up, Input.GetAxisRaw("Mouse X") * speed);
-        //transform.Rotate(0f, Input.GetAxisRaw("Mouse X") * speed, 0f, Space.World);
-        //transform.Rotate(-Input.GetAxis("Mouse Y") * speed, 0f, 0f);
+        var dir = Input.mousePosition - start;
+     
+        
     }
+    public float GetAngle(Vector3 vStart, Vector3 vEnd) {
+        Vector3 v = vEnd - vStart;
+        return Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg;
+    }
+
     float startScale = 0f;
     void Scale() {
         if (selected == TransformDirection.None) return;
@@ -373,9 +378,6 @@ public class TransformControl : MonoBehaviour {
                 case TransformDirection.X:
                     scale.x = Mathf.Ceil(prev.scale.x * mag);
                     break;
-                //case TransformDirection.Y:
-                //    scale.y = prev.scale.y * mag;
-                //    break;
                 case TransformDirection.Z:
                     scale.z = Mathf.Ceil(prev.scale.z * mag);
                     break;
@@ -443,7 +445,7 @@ public class TransformControl : MonoBehaviour {
 
         // x axis
         var color = selected == TransformDirection.X ? colors[3] : colors[0];
-        DrawLine(Vector3.zero, Vector3.right, color);
+        DrawLine(Vector3.zero, Vector3.right * 2f, color);
         DrawMesh(cone, matrices[0], color);
 
         // y axis
