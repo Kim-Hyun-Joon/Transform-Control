@@ -320,40 +320,21 @@ public class TransformControl : MonoBehaviour {
             transform.position = prev.position + proj;
         }
     }
-    float startRotation = 0f;
-    float speed = 15f;
-    public float angleOffset;
+    
     void Rotate(Vector3 start) {
         if (selected == TransformDirection.None) return;
 
-        angleOffset = -Mathf.Atan2(start.y, start.x) * Mathf.Rad2Deg;
-        /*
-        var dir = start - Camera.main.WorldToScreenPoint(transform.position);
-        var mouseDir = Camera.main.WorldToScreenPoint(Input.mousePosition) - Camera.main.WorldToScreenPoint(transform.position);
-        var test = mouseDir - dir;
-
-        angleOffset = Mathf.Atan2(dir.y,dir.x) * Mathf.Rad2Deg;
-
-        var angle = -Mathf.Atan2(test.y, test.x) * Mathf.Rad2Deg + angleOffset;
-        Debug.Log(angle);
-        */
         var v = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-        Debug.Log(v);
-        var angle = Vector3.Angle(Input.mousePosition, start);
-        
-        
-        transform.GetChild(0).LookAt(new Vector3(v.x,0f,v.z));
 
-        var dir = Input.mousePosition - start;
-     
-        
-    }
-    public float GetAngle(Vector3 vStart, Vector3 vEnd) {
-        Vector3 v = vEnd - vStart;
-        return Mathf.Atan2(v.y, v.x) * Mathf.Rad2Deg;
+        var dirVec = new Vector3(v.x - transform.GetChild(0).position.x, 0f, v.z - transform.GetChild(0).position.z);
+
+        dirVec = Quaternion.AngleAxis(-90, Vector3.up) * dirVec;
+        dirVec = dirVec + new Vector3(transform.GetChild(0).position.x, 0f, transform.GetChild(0).position.z);
+
+        transform.GetChild(0).LookAt(dirVec);
+
     }
 
-    float startScale = 0f;
     void Scale() {
         if (selected == TransformDirection.None) return;
         
