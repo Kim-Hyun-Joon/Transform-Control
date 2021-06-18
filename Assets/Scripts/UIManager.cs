@@ -25,7 +25,7 @@ public class UIManager : MonoBehaviour {
 
     public void SetTransformLabel(Transform transform) {
         positionLabel.SetTransform(transform.position);
-        rotationLabel.SetTransform(transform.rotation.eulerAngles);
+        rotationLabel.SetTransform(transform.GetChild(0).rotation.eulerAngles);
         scaleLabel.SetTransform(transform.localScale);
     }
     //나중에 UI 부분 인스턴스화 할때 사용할 방식
