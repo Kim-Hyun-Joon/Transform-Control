@@ -36,8 +36,8 @@ public class MouseController : MonoBehaviour {
             gameObject.transform.localScale -= new Vector3(0.1f, 0.1f, 0.1f);
         if (dis.sqrMagnitude < 0.001f) {
             isClicked = true;
-            selectedObject.Select = transform.parent.gameObject;  //CubePivot
-            //selectedObject.Select = gameObject;                     //Cube
+            //selectedObject.Select = transform.parent.gameObject;  //CubePivot
+            selectedObject.Select = gameObject;                     //Cube
         }
     }
     public void ReleaseClick() {

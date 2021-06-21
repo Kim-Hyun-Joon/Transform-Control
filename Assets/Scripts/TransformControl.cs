@@ -9,8 +9,6 @@ using UnityEngine.Rendering;
 
 public class TransformControl : MonoBehaviour {
 
-    public Vector3 startDir;
-    public Vector3 mouseDir;
 
     class TransformData {
         public Vector3 position;
@@ -24,7 +22,7 @@ public class TransformControl : MonoBehaviour {
 
             matrix = Matrix4x4.TRS(p, r, s);
         }
-        public TransformData(Transform tr) : this(tr.position, tr.GetChild(0).rotation, tr.localScale) { }
+        public TransformData(Transform tr) : this(tr.position, tr.rotation, tr.localScale) { }
     }
     public enum TransformMode {
         None,
@@ -34,9 +32,11 @@ public class TransformControl : MonoBehaviour {
     };
     public enum TransformDirection {
         None,
-        X,
+        Xright,
+        Xleft,
         Y,  //윗방향
-        Z,
+        Zforward,
+        Zback,
         XZ
     };
     protected const string SHADER = "Hidden/Internal-Colored";
@@ -57,14 +57,18 @@ public class TransformControl : MonoBehaviour {
 
     Dictionary<TransformDirection, Vector3> axes = new Dictionary<TransformDirection, Vector3>() {
             { TransformDirection.None, Vector3.zero },
-            { TransformDirection.X, Vector3.right },
+            { TransformDirection.Xright, Vector3.right },
+            { TransformDirection.Xleft, Vector3.left },
             { TransformDirection.Y, Vector3.up },
-            { TransformDirection.Z, Vector3.forward },
+            { TransformDirection.Zforward, Vector3.forward },
+            { TransformDirection.Zback, Vector3.back },
             { TransformDirection.XZ, Vector3.right + Vector3.forward },
         };
     Matrix4x4[] matrices = new Matrix4x4[] {
             Matrix4x4.TRS(Vector3.right, Quaternion.AngleAxis(90f, Vector3.back), Vector3.one),
             Matrix4x4.TRS(Vector3.forward, Quaternion.AngleAxis(90f, Vector3.right), Vector3.one),
+            Matrix4x4.TRS(Vector3.left, Quaternion.AngleAxis(90f, Vector3.forward), Vector3.one),
+            Matrix4x4.TRS(Vector3.back, Quaternion.AngleAxis(90f, Vector3.left), Vector3.one),
         };
     Material _material;
 
@@ -84,6 +88,8 @@ public class TransformControl : MonoBehaviour {
 
     #endregion
 
+    Transform[] nodeDirections = new Transform[4];
+
     void Awake() {
         mode = (TransformMode)UIManager.Instance.GetMode();
 
@@ -92,6 +98,10 @@ public class TransformControl : MonoBehaviour {
 
         GetCircumference(SPHERE_RESOLUTION,
             out circumY);
+
+        for(int i = 1; i < transform.childCount; i++) {
+            nodeDirections[i-1] = transform.GetChild(i);
+        }
     }
     // Usage: Call Control() method in Update() loop 
     void Update() {
@@ -106,13 +116,14 @@ public class TransformControl : MonoBehaviour {
         } else if (Input.GetMouseButtonUp(0)) {
             dragging = false;
             hasPreMousePos = false; //
+            //transform.GetChild(0).rotation = Quaternion.Euler(new Vector3(0, 90f * Mathf.Round(transform.GetChild(0).rotation.eulerAngles.y / 90), 0));
+            transform.rotation = Quaternion.Euler(new Vector3(0, 90f * Mathf.Round(transform.rotation.eulerAngles.y / 90), 0));
             selected = TransformDirection.None;
         }
         if (dragging) {
             Drag();
         }
     }
-
     public bool Pick(Vector3 mouse) {
         selected = TransformDirection.None;
 
@@ -128,7 +139,8 @@ public class TransformControl : MonoBehaviour {
     }
     Matrix4x4 GetTranform() {
         float scale = 1f;
-        return Matrix4x4.TRS(transform.GetChild(0).position, transform.rotation, Vector3.one * scale);
+        return Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one * scale);
+        //return Matrix4x4.TRS(transform.GetChild(0).position, transform.rotation, Vector3.one * scale);
     }
     bool PickOrthogonal(Vector3 mouse) {
         var cam = Camera.main;
@@ -158,14 +170,22 @@ public class TransformControl : MonoBehaviour {
             zl += THRESHOLD;
         }
         var xzl = v.Orth(xz).magnitude;
-        if(Vector2.Dot(v,xz)<= -float.Epsilon || vl > xzHead.magnitude) {
+        if (Vector2.Dot(v, xz) <= -float.Epsilon || vl > xzHead.magnitude) {
             xzl += THRESHOLD;
         }
 
-        if (xl < zl && xl < xzl && xl < THRESHOLD) {
-            selected = TransformDirection.X;
-        } else if (zl < xl && zl < xzl && zl < THRESHOLD) {
-            selected = TransformDirection.Z;
+        if (xl < zl && xl < xzl) {
+            if (xl < THRESHOLD) {
+                selected = TransformDirection.Xright;
+            } else {
+                selected = TransformDirection.Xleft;
+            }
+        } else if (zl < xl && zl < xzl) {
+            if (zl < THRESHOLD) {
+                selected = TransformDirection.Zforward;
+            } else {
+                selected = TransformDirection.Zback;
+            }
         } else if (xzl < zl && xzl < xl && xzl < THRESHOLD) {
             selected = TransformDirection.XZ;
         }
@@ -242,8 +262,8 @@ public class TransformControl : MonoBehaviour {
         var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         if (plane.Raycast(ray, out float distance)) {
             var point = ray.GetPoint(distance);
-            var axisX = prev.rotation * axes[selected == TransformDirection.XZ || selected == TransformDirection.X ? TransformDirection.X : TransformDirection.None];
-            var axisZ = prev.rotation * axes[selected == TransformDirection.XZ || selected == TransformDirection.Z ? TransformDirection.Z : TransformDirection.None];
+            var axisX = prev.rotation * axes[selected == TransformDirection.XZ || selected == TransformDirection.Xright ? TransformDirection.Xright : TransformDirection.None];
+            var axisZ = prev.rotation * axes[selected == TransformDirection.XZ || selected == TransformDirection.Zforward ? TransformDirection.Zforward : TransformDirection.None];
             var dir = point - prev.position;
             var projX = Vector3.Project(dir, axisX.normalized);
             var projZ = Vector3.Project(dir, axisZ.normalized);
@@ -267,29 +287,37 @@ public class TransformControl : MonoBehaviour {
             transform.position = prev.position + projX + projZ;
         }
     }
-    [Range(-180f,180f)]
+    [Range(-180f, 180f)]
     public float angle;
 
-    public bool hasPreMousePos=false;
+    public bool hasPreMousePos = false;
     public Vector3 preMousePos;
     void Rotate() {
         if (selected == TransformDirection.None) return;
-        
+
         var rotateAxis = axes[selected];
         var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
 
         if (hasPreMousePos) {
 
-            var dirVec = new Vector3(mousePos.x - transform.GetChild(0).position.x, 0f, mousePos.z - transform.GetChild(0).position.z);
-            var preVec = new Vector3(preMousePos.x - transform.GetChild(0).position.x, 0f, preMousePos.z - transform.GetChild(0).position.z);
-            angle += SignedAngle(preVec, dirVec, Vector3.up);
+            //var dirVec = new Vector3(mousePos.x - transform.GetChild(0).position.x, 0f, mousePos.z - transform.GetChild(0).position.z);
+            var dirVec = new Vector3(mousePos.x - transform.position.x, 0f, mousePos.z - transform.position.z);
+            //var preVec = new Vector3(preMousePos.x - transform.GetChild(0).position.x, 0f, preMousePos.z - transform.GetChild(0).position.z);
+            var preVec = new Vector3(preMousePos.x - transform.position.x, 0f, preMousePos.z - transform.position.z);
 
-            if (Mathf.Abs(angle) > 90f) {
-                transform.GetChild(0).rotation = transform.GetChild(0).rotation * Quaternion.AngleAxis(90f * Mathf.Sign(angle), rotateAxis);
-                angle = 0;
-            }
+            //90도 회전을 위한 장치
+            //angle += SignedAngle(preVec, dirVec, Vector3.up);
 
+            //if (Mathf.Abs(angle) > 90f) {
+            //    transform.GetChild(0).rotation = transform.GetChild(0).rotation * Quaternion.AngleAxis(90f * Mathf.Sign(angle), rotateAxis);
+            //    angle = 0;
+            //}
+            //
+
+            //부드러운 회전을 위해서는 이부분 주석 해제
+            angle = SignedAngle(preVec, dirVec, Vector3.up);
             //transform.GetChild(0).rotation = transform.GetChild(0).rotation * Quaternion.AngleAxis(angle, rotateAxis);
+            transform.rotation = transform.rotation * Quaternion.AngleAxis(angle, rotateAxis);
         }
         preMousePos = mousePos;
         hasPreMousePos = true;
@@ -300,9 +328,12 @@ public class TransformControl : MonoBehaviour {
         float sign = Mathf.Sign(Vector3.Dot(normal, Vector3.Cross(from, to)));
         return angle * sign;
     }
+
+    public Transform startNode, endNode;
     void Scale() {
         if (selected == TransformDirection.None) return;
 
+        /*
         var plane = new Plane((Camera.main.transform.position - transform.position).normalized, prev.position);
         var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         if (plane.Raycast(ray, out float distance)) {
@@ -321,15 +352,47 @@ public class TransformControl : MonoBehaviour {
 
             var scale = transform.localScale;
             switch (selected) {
-                case TransformDirection.X:
+                case TransformDirection.Xright:
                     scale.x = Mathf.Ceil(prev.scale.x * mag);
                     break;
-                case TransformDirection.Z:
+                case TransformDirection.Zforward:
                     scale.z = Mathf.Ceil(prev.scale.z * mag);
                     break;
             }
             transform.localScale = scale;
         }
+        */
+
+        /*
+        Xright = nodeDirections[0];
+        Xleft = nodeDirections[1];
+        Zforward = nodeDirections[2];
+        Zback = nodeDirections[3];
+        */
+        Debug.Log(selected);
+        if (selected == TransformDirection.Xright) {
+            startNode = nodeDirections[1];
+            endNode = nodeDirections[0];
+        } else if (selected == TransformDirection.Xleft) {
+            startNode = nodeDirections[0];
+            endNode = nodeDirections[1];
+        } else if (selected == TransformDirection.Zforward) {
+            startNode = nodeDirections[3];
+            endNode = nodeDirections[2];
+        } else if (selected == TransformDirection.Zback) {
+            startNode = nodeDirections[2];
+            endNode = nodeDirections[3];
+        }
+
+
+        float distance = Vector3.Distance(startNode.position, endNode.position);
+        transform.localScale = new Vector3(transform.localScale.x, transform.localScale.y, distance);
+
+        Vector3 middlePoint = (startNode.position + endNode.position) * 0.5f;
+        transform.position = middlePoint;
+
+        Vector3 rotationDirection = (endNode.position - startNode.position);
+        transform.rotation = Quaternion.LookRotation(rotationDirection);
 
     }
     void OnRenderObject() {
@@ -397,12 +460,12 @@ public class TransformControl : MonoBehaviour {
         Getmaterial().SetPass(0);
 
         // x axis
-        var color = selected == TransformDirection.X ? colors[3] : colors[0];
+        var color = selected == TransformDirection.Xright ? colors[3] : colors[0];
         DrawLine(Vector3.zero, Vector3.right, color);
         DrawMesh(cone, matrices[0], color);
 
         // z axis
-        color = selected == TransformDirection.Z ? colors[3] : colors[2];
+        color = selected == TransformDirection.Zforward ? colors[3] : colors[2];
         DrawLine(Vector3.zero, Vector3.forward, color);
         DrawMesh(cone, matrices[1], color);     //y축을 지움으로 index 한칸 땡김
 
@@ -429,15 +492,58 @@ public class TransformControl : MonoBehaviour {
         Getmaterial().SetInt("_ZTest", (int)CompareFunction.Always);
         Getmaterial().SetPass(0);
 
+        /*
+        switch (selected) {
+            case TransformDirection.None:
+                break;
+            case TransformDirection.Xright:
+                var color = colors[3];
+                DrawLine(Vector3.zero, Vector3.right, color);
+                DrawMesh(cube, matrices[0], color);
+                break;
+            case TransformDirection.Xleft:
+                color = colors[3];
+                DrawLine(Vector3.zero, Vector3.left, color);
+                DrawMesh(cube, matrices[2], color);
+                break;
+            //case TransformDirection.Y:
+            //    break;
+            case TransformDirection.Zforward:
+                color = colors[3];
+                DrawLine(Vector3.zero, Vector3.forward, color);
+                DrawMesh(cube, matrices[1], color);
+                break;
+            case TransformDirection.Zback:
+                color = colors[3];
+                DrawLine(Vector3.zero, Vector3.back, color);
+                DrawMesh(cube, matrices[3], color);
+                break;
+            //case TransformDirection.XZ:
+            //    break;
+            default:
+                break;
+        }
+        */
+        
         // x axis
-        var color = selected == TransformDirection.X ? colors[3] : colors[0];
+        var color = selected == TransformDirection.Xright ? colors[3] : colors[0];
         DrawLine(Vector3.zero, Vector3.right, color);
         DrawMesh(cube, matrices[0], color);
 
+        color = selected == TransformDirection.Xleft ? colors[3] : colors[0];
+        DrawLine(Vector3.zero, Vector3.left, color);
+        DrawMesh(cube, matrices[2], color);
+
+
         // z axis
-        color = selected == TransformDirection.Z ? colors[3] : colors[2];
+        color = selected == TransformDirection.Zforward ? colors[3] : colors[2];
         DrawLine(Vector3.zero, Vector3.forward, color);
         DrawMesh(cube, matrices[1], color);     //y축 삭제로 인해 index 한칸 땡김
+
+        color = selected == TransformDirection.Zback ? colors[3] : colors[2];
+        DrawLine(Vector3.zero, Vector3.back, color);
+        DrawMesh(cube, matrices[3], color);
+        
     }
     //Translate Mode에서는 화살표, Scale Mode에서는 육면체
     #region Mesh
