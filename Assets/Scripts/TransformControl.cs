@@ -129,10 +129,11 @@ public class TransformControl : MonoBehaviour {
 
         switch (mode) {
             case TransformMode.Translate:
-            case TransformMode.Scale:
                 return PickOrthogonal(mouse);
             case TransformMode.Rotate:
                 return PickSphere(mouse);
+            case TransformMode.Scale:
+                return PickTest(mouse);
         }
 
         return false;
@@ -142,6 +143,36 @@ public class TransformControl : MonoBehaviour {
         return Matrix4x4.TRS(transform.position, transform.rotation, Vector3.one * scale);
         //return Matrix4x4.TRS(transform.GetChild(0).position, transform.rotation, Vector3.one * scale);
     }
+
+    bool PickTest(Vector3 mouse) {
+        var cam = Camera.main;
+
+        var matrix = GetTranform();
+
+        var origin = cam.WorldToScreenPoint(matrix.MultiplyPoint(Vector3.zero)).xy();
+
+        var v = mouse.xy() - origin;
+
+        var xRight = cam.WorldToScreenPoint(matrix.MultiplyPoint(new Vector3(transform.localScale.x*0.5f,0,0))).xy() - origin;
+        var xLeft = cam.WorldToScreenPoint(matrix.MultiplyPoint(new Vector3(transform.localScale.x * -0.5f, 0, 0))).xy() - origin;
+        var zForward = cam.WorldToScreenPoint(matrix.MultiplyPoint(new Vector3(0, 0, transform.localScale.z * 0.5f))).xy() - origin;
+        var zBack = cam.WorldToScreenPoint(matrix.MultiplyPoint(new Vector3(0, 0, transform.localScale.z * -0.5f))).xy() - origin;
+
+        if ((xRight-v).magnitude<10f) {
+            selected = TransformDirection.Xright;
+        } else if((xLeft - v).magnitude < 10f) {
+            selected = TransformDirection.Xleft;
+        } else if ((zForward - v).magnitude < 10f) {
+            selected = TransformDirection.Zforward;
+        } else if ((zBack - v).magnitude < 10f) {
+            selected = TransformDirection.Zback;
+        }
+
+
+        return selected != TransformDirection.None;
+    }
+
+
     bool PickOrthogonal(Vector3 mouse) {
         var cam = Camera.main;
 
@@ -150,6 +181,7 @@ public class TransformControl : MonoBehaviour {
         var origin = cam.WorldToScreenPoint(matrix.MultiplyPoint(Vector3.zero)).xy();
         var right = cam.WorldToScreenPoint(matrix.MultiplyPoint(Vector3.right)).xy() - origin;
         var rightHead = cam.WorldToScreenPoint(matrix.MultiplyPoint(Vector3.right * (1f + HANDLER_SIZE))).xy() - origin;
+
         var forward = cam.WorldToScreenPoint(matrix.MultiplyPoint(Vector3.forward)).xy() - origin;
         var forwardHead = cam.WorldToScreenPoint(matrix.MultiplyPoint(Vector3.forward * (1f + HANDLER_SIZE))).xy() - origin;
 
@@ -165,9 +197,10 @@ public class TransformControl : MonoBehaviour {
         if (Vector2.Dot(v, right) <= -float.Epsilon || vl > rightHead.magnitude) {
             xRight += THRESHOLD;
         }
-        var xLeft = v.Orth(-right).magnitude;
-        if (Vector2.Dot(v, -right) <= -float.Epsilon || vl < -rightHead.magnitude) {
-            xLeft += THRESHOLD;
+
+        var xLeft = -v.Orth(right).magnitude;
+        if (Vector2.Dot(v, right) >= float.Epsilon || vl > rightHead.magnitude) {
+            xLeft -= THRESHOLD;
         }
         //
 
@@ -175,9 +208,10 @@ public class TransformControl : MonoBehaviour {
         if (Vector2.Dot(v, forward) <= -float.Epsilon || vl > forwardHead.magnitude) {
             zForward += THRESHOLD;
         }
-        var zBack = v.Orth(-forward).magnitude;
-        if (Vector2.Dot(v, -forward) <= -float.Epsilon || vl < -forwardHead.magnitude) {
-            zBack += THRESHOLD;
+
+        var zBack = -v.Orth(forward).magnitude;
+        if (Vector2.Dot(v, forward) >= float.Epsilon || vl > forwardHead.magnitude) {
+            zBack -= THRESHOLD;
         }
         //
 
@@ -188,11 +222,11 @@ public class TransformControl : MonoBehaviour {
 
         if (xRight < zForward && xRight < THRESHOLD) {
             selected = TransformDirection.Xright;
-        } else if (xLeft < zForward && xLeft < THRESHOLD) {
+        } else if (xLeft > -zForward && xLeft > -THRESHOLD) {
             selected = TransformDirection.Xleft;
         } else if (zForward < xRight && zForward < THRESHOLD) {
             selected = TransformDirection.Zforward;
-        } else if (zBack < xRight && zBack < THRESHOLD) {
+        } else if (zBack > -xRight && zBack > -THRESHOLD) {
             selected = TransformDirection.Zback;
         } else if(xzl < xRight && xzl < zForward && xzl < THRESHOLD) {
             selected = TransformDirection.XZ;
@@ -350,29 +384,30 @@ public class TransformControl : MonoBehaviour {
             var offset = GetStartDistance();
 
             var mag = 0f;
-            if (proj.magnitude < offset) {
-                mag = 1f - (offset - proj.magnitude) / offset;
-            } else {
+            //if (proj.magnitude < offset) {
+            //    mag = 1f - (offset - proj.magnitude) / offset;
+            //} else {
                 mag = proj.magnitude / offset;
-            }
+            //}
 
             var scale = transform.localScale;
             switch (selected) {
                 case TransformDirection.Xright:
-                    scale.x = Mathf.Ceil(prev.scale.x * mag);
-                    break;
                 case TransformDirection.Xleft:
-                    scale.x = Mathf.Ceil(prev.scale.x * mag);
+                    scale.x = Mathf.Round(prev.scale.x * mag);
                     break;
                 case TransformDirection.Zforward:
-                    scale.z = Mathf.Ceil(prev.scale.z * mag);
-                    break;
                 case TransformDirection.Zback:
-                    scale.z = Mathf.Ceil(prev.scale.z * mag);
+                    scale.z = Mathf.Round(prev.scale.z * mag);
                     break;
 
             }
+
             transform.localScale = scale;
+
+            var modSize = Quaternion.AngleAxis(transform.rotation.eulerAngles.y, Vector3.up) * (new Vector3((prev.scale.x - scale.x) * 0.5f, 0, (prev.scale.z - scale.z) * 0.5f));
+            var modeSign = selected == TransformDirection.Xright || selected == TransformDirection.Zforward ? 1f : -1f;
+            transform.position = prev.position - modeSign * modSize;
         }
 
     }
