@@ -30,6 +30,13 @@ public static class VectorExtension {
         return new Vector3(Mathf.Ceil(v.x), Mathf.Ceil(v.y), Mathf.Ceil(v.z));
     }
 
+    public static Vector3 IngredientMultiply(this Vector3 a, Vector3 b) {
+        return new Vector3(a.x * b.x, a.y * b.y, a.z * b.z);
+    }
+
+    public static Vector3 LeastScale(this Vector3 v) {
+        return new Vector3(Mathf.Clamp(v.x, 1f, float.MaxValue), v.y, Mathf.Clamp(v.z, 1f, float.MaxValue));
+    }
 }
 
 

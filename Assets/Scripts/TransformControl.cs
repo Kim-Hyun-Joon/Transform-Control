@@ -116,7 +116,7 @@ public class TransformControl : MonoBehaviour {
         } else if (Input.GetMouseButtonUp(0)) {
             dragging = false;
             hasPreMousePos = false; //
-            transform.rotation = Quaternion.Euler(new Vector3(0, 90f * Mathf.Round(transform.rotation.eulerAngles.y / 90), 0));
+            transform.rotation = Quaternion.Euler(new Vector3(0, 90f * Mathf.Round(transform.rotation.eulerAngles.y / 90), 0));     //마우스 뗐을때 각도 적용
             selected = TransformDirection.None;
         }
         if (dragging) {
@@ -300,7 +300,7 @@ public class TransformControl : MonoBehaviour {
     void Translate() {
         if (selected == TransformDirection.None) return;
 
-        /*
+        /*      
         var plane = new Plane((Camera.main.transform.position - prev.position).normalized, prev.position);
         var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         if (plane.Raycast(ray, out float distance)) {
@@ -335,33 +335,19 @@ public class TransformControl : MonoBehaviour {
 
         if (hasPreMousePos) {
 
-            //var dirVec = transform.rotation * rotateAxis;
-            //var preVec = preMousePos;
-
-            var dirVec = new Vector3(mousePos.x - transform.position.x, 0f, mousePos.z - transform.position.z).Round();
-            var preVec = new Vector3(preMousePos.x - transform.position.x, 0f, preMousePos.z - transform.position.z).Round();
-
             var dir = transform.rotation * rotateAxis;
+            dir = new Vector3(Mathf.Abs(dir.x), 0, Mathf.Abs(dir.z));
 
-            //90도 회전을 위한 장치
-            //angle += SignedAngle(preVec, dirVec, Vector3.up);
-
-            //if (Mathf.Abs(angle) > 90f) {
-            //    transform.GetChild(0).rotation = transform.GetChild(0).rotation * Quaternion.AngleAxis(90f * Mathf.Sign(angle), rotateAxis);
-            //    angle = 0;
-            //}
-            //
-
-            //부드러운 회전을 위한 장치
-            //angle = SignedAngle(preVec, dirVec, Vector3.up);
-            //transform.rotation = transform.rotation * Quaternion.AngleAxis(angle, rotateAxis);
-
-            transform.position = transform.position + dirVec-preVec;
+            var dirVec = new Vector3(mousePos.x - transform.position.x, 0f, mousePos.z - transform.position.z).Round() * 0.5f;
+            var preVec = new Vector3(preMousePos.x - transform.position.x, 0f, preMousePos.z - transform.position.z).Round() * 0.5f;
+            var transVec = dirVec - preVec;
+            
+            transVec = transVec.IngredientMultiply(dir);
+            transform.position = transform.position + transVec;
         }
         preMousePos = mousePos;
         hasPreMousePos = true;
     }
-    [Range(-180f, 180f)]
     public float angle;
 
     public bool hasPreMousePos = false;
@@ -399,9 +385,11 @@ public class TransformControl : MonoBehaviour {
         float sign = Mathf.Sign(Vector3.Dot(normal, Vector3.Cross(from, to)));
         return angle * sign;
     }
+    public float size;
+
     void Scale() {
         if (selected == TransformDirection.None) return;
-
+        /*
         var plane = new Plane((Camera.main.transform.position - transform.position).normalized, prev.position);
         var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
         if (plane.Raycast(ray, out float distance)) {
@@ -433,6 +421,63 @@ public class TransformControl : MonoBehaviour {
             var modeSign = selected == TransformDirection.Xright || selected == TransformDirection.Zforward ? 1f : -1f;
             transform.position = prev.position - modeSign * modSize;
         }
+        */
+        var rotateAxis = axes[selected];
+        var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+
+        if (hasPreMousePos) {
+            var dir = Quaternion.Euler(-transform.rotation.eulerAngles);
+            var scaleVec = dir * new Vector3(mousePos.x - preMousePos.x, 0f, mousePos.z - preMousePos.z);
+
+            var scale = transform.localScale;
+            switch (selected) {
+                case TransformDirection.Xright:
+                    size += scaleVec.x;
+                    if(Mathf.Abs(size) > 1f) {
+                        scale.x = Mathf.Clamp(scale.x + Mathf.Round(size), 1, float.MaxValue);
+                        //scale.x += Mathf.Round(size);
+                        size = 0;
+                    }
+                    //scale.x += scaleVec.x;
+                    break;
+                case TransformDirection.Xleft:
+                    size += scaleVec.x;
+                    if (Mathf.Abs(size) > 1f) {
+                        scale.x = Mathf.Clamp(scale.x - Mathf.Round(size), 1, float.MaxValue);
+                        //scale.x -= Mathf.Round(size);
+                        size = 0;
+                    }
+                    //scale.x -= scaleVec.x;
+                    break;
+                case TransformDirection.Zforward:
+                    size += scaleVec.z;
+                    if (Mathf.Abs(size) > 1f) {
+                        scale.z = Mathf.Clamp(scale.z + Mathf.Round(size), 1, float.MaxValue);
+                        size = 0;
+                    }
+                    //scale.z += scaleVec.z;
+                    break;
+                case TransformDirection.Zback:
+                    size += scaleVec.z;
+                    if (Mathf.Abs(size) > 1f) {
+                        scale.z = Mathf.Clamp(scale.z - Mathf.Round(size), 1, float.MaxValue);
+                        //scale.z -= Mathf.Round(size);
+                        size = 0;
+                    }
+                    //scale.z -= scaleVec.z;
+                    break;
+            }
+
+            transform.localScale = scale;
+
+            var modSize = Quaternion.AngleAxis(transform.rotation.eulerAngles.y, Vector3.up) * (new Vector3((prev.scale.x - scale.x) * 0.5f, 0, (prev.scale.z - scale.z) * 0.5f));
+            var modeSign = selected == TransformDirection.Xright || selected == TransformDirection.Zforward ? 1f : -1f;
+            transform.position = prev.position - modeSign * modSize;
+
+
+        }
+        preMousePos = mousePos;
+        hasPreMousePos = true;
 
     }
     void OnRenderObject() {

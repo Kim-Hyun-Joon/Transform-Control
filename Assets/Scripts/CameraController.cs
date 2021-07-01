@@ -96,7 +96,7 @@ public class CameraController : MonoBehaviour {
     }
 
     // Update is called once per frame
-    void Update() {
+    void LateUpdate() {
         CameraUpdate();
     }
     private void CameraUpdate() {
@@ -139,9 +139,8 @@ public class CameraController : MonoBehaviour {
             zoomPos -= ZoomDirection * Time.deltaTime * keyboardZoomingSensitivity;
         }
         zoomPos = Mathf.Clamp01(zoomPos);
-
         if (cam.orthographic) {
-            //cam.orthographicSize += zoomSpeed;
+            cam.orthographicSize =  Mathf.Lerp(minHeight, maxHeight, zoomPos);
         } else {
             float targetHeight = Mathf.Lerp(minHeight, maxHeight, zoomPos);
 

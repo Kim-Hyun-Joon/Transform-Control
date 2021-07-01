@@ -3274,7 +3274,7 @@ MonoBehaviour:
   cameraMode: 0
   limitMap: 1
   keyboardMovementSpeed: 10
-  panningSpeed: 15
+  panningSpeed: 40
   groundMask:
     serializedVersion: 2
     m_Bits: 4294967295
@@ -3284,7 +3284,7 @@ MonoBehaviour:
   minHeight: 5
   maxHeight: 20
   zoomSpeed: 5
-  rotationSpeed: 30
+  rotationSpeed: 100
   limitX: 0
   limitZ: 0
 --- !u!1 &1847635896
