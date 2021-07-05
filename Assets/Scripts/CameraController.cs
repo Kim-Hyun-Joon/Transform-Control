@@ -4,18 +4,25 @@ using UnityEngine;
 
 public class CameraController : MonoBehaviour {
     private Camera cam;
+    private ChangeCursor cursor;
     private Transform ground;
 
     public bool useKeyboardInput = true;        //키보드 입력을 받을지
     public bool usePanning = true;              //이동할지 말지
     public bool useScrollwheelZooming = true;   //스크롤휠을 쓸지
     public bool useKeyboardZooming = true;      //키보드로 줌인아웃 할지
-    public bool useKeyboardRotation = true;     //키보드로 회전을 할지
     public bool useMouseRotation = true;        //마우스로 회전을 할지
     public bool cameraMode;                     //true : orthographic false : perspective
     public bool limitMap = true;                //카메라 이동에 제한을 둘지
 
-    public float keyboardMovementSpeed = 5f;
+    private enum InputMouse {
+        Translate,
+        Rotate,
+        None
+    }
+    private InputMouse mode;
+
+    public float keyboardMovementSpeed = 15f;
     public float panningSpeed = 10f;
     public LayerMask groundMask = -1;           //바닥
     public float zoomPos = 0;
@@ -24,7 +31,7 @@ public class CameraController : MonoBehaviour {
     public float minHeight = 5f;
     public float maxHeight = 20f;
     public float zoomSpeed = 5f;
-    public float rotationSpeed = 30f;
+    public float rotationSpeed = 150f;
     public float limitX, limitZ;
 
     private string horizontalAxis = "Horizontal";
@@ -33,12 +40,6 @@ public class CameraController : MonoBehaviour {
     private KeyCode panningKey = KeyCode.Mouse2;
 
     private string zoomingAxis = "Mouse ScrollWheel";
-
-    private KeyCode zoomInKey = KeyCode.E;
-    private KeyCode zoomOutKey = KeyCode.Q;
-
-    private KeyCode rotateRightKey = KeyCode.X;
-    private KeyCode rotateLeftKey = KeyCode.Z;
 
     private KeyCode mouseRotationKey = KeyCode.Mouse1;
 
@@ -58,47 +59,52 @@ public class CameraController : MonoBehaviour {
 
         get { return new Vector2(Input.GetAxis("Mouse X"), Input.GetAxis("Mouse Y")); }
     }
-    private int ZoomDirection {
-
-        get {
-            bool zoomIn = Input.GetKey(zoomInKey);
-            bool zoomOut = Input.GetKey(zoomOutKey);
-
-            if (zoomIn && !zoomOut)
-                return -1;
-            else if (!zoomIn && zoomOut)
-                return 1;
-            else
-                return 0;
-        }
-    }
-    private int RotationDirection {
-
-        get {
-            bool rotateRight = Input.GetKey(rotateRightKey);
-            bool rotateLeft = Input.GetKey(rotateLeftKey);
-
-            if (!rotateLeft && rotateRight)
-                return 1;
-            else if (rotateLeft && !rotateRight)
-                return -1;
-            else
-                return 0;
-        }
-    }
 
     // Start is called before the first frame update
     void Start() {
+
         ground = GameObject.FindWithTag("Ground").transform;
         limitX = ground.localScale.x;
         limitZ = ground.localScale.z;
+        mode = InputMouse.None;
         cam = transform.GetComponent<Camera>();
+        cursor = transform.GetComponent<ChangeCursor>();
     }
 
     // Update is called once per frame
     void LateUpdate() {
+
+        ModeUpdate();
         CameraUpdate();
+        CursorUpdate();
+
     }
+    private void ModeUpdate() {
+
+        if (Input.GetKeyDown(KeyCode.Mouse1) && mode == InputMouse.None) {
+            mode = InputMouse.Rotate;
+        }
+        if (Input.GetKeyDown(KeyCode.Mouse2) && mode == InputMouse.None) {
+            mode = InputMouse.Translate;
+        }
+        if(Input.GetKeyUp(KeyCode.Mouse1) || Input.GetKeyUp(KeyCode.Mouse2)) {
+            mode = InputMouse.None;
+        }
+    }
+
+    private void CursorUpdate() {
+
+        if(mode == InputMouse.Translate) {
+            cursor.TranslateCursor();
+        }
+        if(mode == InputMouse.Rotate) {
+            cursor.RotateCursor();
+        }
+        if(mode == InputMouse.None) {
+            cursor.DefaultCursor();
+        }
+    }
+
     private void CameraUpdate() {
 
         Move();
@@ -109,11 +115,13 @@ public class CameraController : MonoBehaviour {
 
     private void Move() {
 
+        if (mode == InputMouse.Rotate)
+            return;
+
         if (useKeyboardInput) {
             Vector3 desiredMove = new Vector3(KeyboardInput.x, 0, KeyboardInput.y);
 
-            desiredMove *= keyboardMovementSpeed;
-            desiredMove *= Time.deltaTime;
+            desiredMove *= keyboardMovementSpeed * Time.deltaTime;
             desiredMove = Quaternion.Euler(new Vector3(0f, transform.eulerAngles.y, 0f)) * desiredMove;
             desiredMove = transform.InverseTransformDirection(desiredMove);
 
@@ -122,8 +130,7 @@ public class CameraController : MonoBehaviour {
         if (usePanning && Input.GetKey(panningKey) && MouseAxis != Vector2.zero) {
             Vector3 desiredMove = new Vector3(-MouseAxis.x, 0, -MouseAxis.y);
 
-            desiredMove *= panningSpeed;
-            desiredMove *= Time.deltaTime;
+            desiredMove *= panningSpeed * Time.deltaTime;
             desiredMove = Quaternion.Euler(new Vector3(0f, transform.eulerAngles.y, 0f)) * desiredMove;
             desiredMove = transform.InverseTransformDirection(desiredMove);
 
@@ -135,9 +142,6 @@ public class CameraController : MonoBehaviour {
         if (useScrollwheelZooming) {
             zoomPos -= ScrollWheel * Time.deltaTime * scrollWheelZoomingSensitivity;
         }
-        if (useKeyboardZooming) {
-            zoomPos -= ZoomDirection * Time.deltaTime * keyboardZoomingSensitivity;
-        }
         zoomPos = Mathf.Clamp01(zoomPos);
         if (cam.orthographic) {
             cam.orthographicSize =  Mathf.Lerp(minHeight, maxHeight, zoomPos);
@@ -146,17 +150,18 @@ public class CameraController : MonoBehaviour {
 
             transform.position = Vector3.Lerp(transform.position,
                 new Vector3(transform.position.x, targetHeight, transform.position.z), Time.deltaTime * zoomSpeed);
-
         }
     }
     private void Rotation() {
 
-        if (useKeyboardRotation)
-            transform.Rotate(Vector3.up, RotationDirection * Time.deltaTime * rotationSpeed, Space.World);
+        if (mode == InputMouse.Translate)
+            return;
 
-        if (useMouseRotation && Input.GetKey(mouseRotationKey))
-            transform.Rotate(Vector3.up, MouseAxis.x * Time.deltaTime * rotationSpeed, Space.World);
-
+        if (useMouseRotation && Input.GetKey(mouseRotationKey)) {
+            float rotationX = transform.localEulerAngles.y + MouseAxis.x * Time.deltaTime * rotationSpeed;
+            float rotationY = Mathf.Clamp(transform.localEulerAngles.x - MouseAxis.y * Time.deltaTime * rotationSpeed, 0f, 90f);
+            transform.localEulerAngles = new Vector3(rotationY, rotationX, 0f);
+        }
     }
     private void LimitPosition() {
 
@@ -166,13 +171,5 @@ public class CameraController : MonoBehaviour {
         transform.position = new Vector3(Mathf.Clamp(transform.position.x, -limitX * minHeight, limitX * minHeight),
             transform.position.y,
             Mathf.Clamp(transform.position.z, -limitZ * minHeight, limitZ * minHeight));
-    }
-    private float DistanceToGround() {
-        Ray ray = new Ray(transform.position, Vector3.down);
-        if (Physics.Raycast(ray, out RaycastHit hit, groundMask.value)) {
-            return (hit.point - transform.position).magnitude;
-        }
-
-        return 0f;
     }
 }

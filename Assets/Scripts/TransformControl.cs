@@ -331,7 +331,8 @@ public class TransformControl : MonoBehaviour {
         }
         */
         var rotateAxis = axes[selected];
-        var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        var mousePos = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, -Camera.main.transform.position.z));
+        //var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);   //이거 Orthographic 모드에서는 됨
 
         if (hasPreMousePos) {
 
@@ -356,7 +357,8 @@ public class TransformControl : MonoBehaviour {
         if (selected == TransformDirection.None) return;
 
         var rotateAxis = axes[selected];
-        var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        var mousePos = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, -Camera.main.transform.position.z));
+        //var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);   //이거 Orthographic 모드에서는 됨
 
         if (hasPreMousePos) {
 
@@ -423,7 +425,8 @@ public class TransformControl : MonoBehaviour {
         }
         */
         var rotateAxis = axes[selected];
-        var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+        var mousePos = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, -Camera.main.transform.position.z));
+        //var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);   //이거 Orthographic 모드에서는 됨
 
         if (hasPreMousePos) {
             var dir = Quaternion.Euler(-transform.rotation.eulerAngles);
