@@ -300,38 +300,9 @@ public class TransformControl : MonoBehaviour {
     void Translate() {
         if (selected == TransformDirection.None) return;
 
-        /*      
-        var plane = new Plane((Camera.main.transform.position - prev.position).normalized, prev.position);
-        var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        if (plane.Raycast(ray, out float distance)) {
-            var point = ray.GetPoint(distance);
-            var axisX = prev.rotation * axes[selected == TransformDirection.XZ || selected == TransformDirection.Xright ? TransformDirection.Xright : TransformDirection.None];
-            var axisZ = prev.rotation * axes[selected == TransformDirection.XZ || selected == TransformDirection.Zforward ? TransformDirection.Zforward : TransformDirection.None];
-            var dir = point - prev.position;
-            var projX = Vector3.Project(dir, axisX.normalized);
-            var projZ = Vector3.Project(dir, axisZ.normalized);
-
-            if (GetStartProj(out Vector3 start)) {
-                var offsetX = (new Vector3(start.x, 0, 0)).magnitude;       //찍은 지점
-                var offsetZ = (new Vector3(0, 0, start.z)).magnitude;
-                var curX = projX.magnitude;
-                var curZ = projZ.magnitude;
-                if (Vector3.Dot(start, projX) >= 0f) {
-                    projX = ((curX - offsetX) * projX.normalized).Round() * 0.5f;
-                } else {
-                    projX = ((curX + offsetX) * projX.normalized).Round() * 0.5f;
-                }
-                if (Vector3.Dot(start, projZ) >= 0f) {
-                    projZ = ((curZ - offsetZ) * projZ.normalized).Round() * 0.5f;
-                } else {
-                    projZ = ((curZ + offsetZ) * projZ.normalized).Round() * 0.5f;
-                }
-            }
-            transform.position = prev.position + projX + projZ;
-        }
-        */
         var rotateAxis = axes[selected];
-        var mousePos = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, -Camera.main.transform.position.z));
+        var mousePos = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, Vector3.Distance(transform.position, Camera.main.transform.position)));
+        //마우스 포지션 in world
         //var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);   //이거 Orthographic 모드에서는 됨
 
         if (hasPreMousePos) {
@@ -339,10 +310,8 @@ public class TransformControl : MonoBehaviour {
             var dir = transform.rotation * rotateAxis;
             dir = new Vector3(Mathf.Abs(dir.x), 0, Mathf.Abs(dir.z));
 
-            var dirVec = new Vector3(mousePos.x - transform.position.x, 0f, mousePos.z - transform.position.z).Round() * 0.5f;
-            var preVec = new Vector3(preMousePos.x - transform.position.x, 0f, preMousePos.z - transform.position.z).Round() * 0.5f;
-            var transVec = dirVec - preVec;
-            
+            var transVec = mousePos - preMousePos;
+
             transVec = transVec.IngredientMultiply(dir);
             transform.position = transform.position + transVec;
         }
@@ -351,13 +320,14 @@ public class TransformControl : MonoBehaviour {
     }
     public float angle;
 
-    public bool hasPreMousePos = false;
+    public bool hasPreMousePos;
     public Vector3 preMousePos;
-    void Rotate() {
+    void Rotate() {     //추후에 레이캐스트 방식으로 바꿀 여지가 있음
         if (selected == TransformDirection.None) return;
 
         var rotateAxis = axes[selected];
-        var mousePos = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, -Camera.main.transform.position.z));
+        var mousePos = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, Vector3.Distance(transform.position, Camera.main.transform.position)));
+        
         //var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);   //이거 Orthographic 모드에서는 됨
 
         if (hasPreMousePos) {
@@ -391,41 +361,9 @@ public class TransformControl : MonoBehaviour {
 
     void Scale() {
         if (selected == TransformDirection.None) return;
-        /*
-        var plane = new Plane((Camera.main.transform.position - transform.position).normalized, prev.position);
-        var ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-        if (plane.Raycast(ray, out float distance)) {
-            var point = ray.GetPoint(distance);
-            var axis = prev.rotation * axes[selected];
-            var dir = point - prev.position;
-            var proj = Vector3.Project(dir, axis.normalized);
-            var offset = GetStartDistance();
-
-            var mag = proj.magnitude / offset;
-            Debug.Log(mag);
-
-            var scale = transform.localScale;
-            switch (selected) {
-                case TransformDirection.Xright:
-                case TransformDirection.Xleft:
-                    scale.x = Mathf.Clamp(Mathf.Ceil(prev.scale.x * mag),1,float.MaxValue);
-                    break;
-                case TransformDirection.Zforward:
-                case TransformDirection.Zback:
-                    scale.z = Mathf.Clamp(Mathf.Ceil(prev.scale.z * mag),1,float.MaxValue);
-                    break;
-
-            }
-
-            transform.localScale = scale;
-
-            var modSize = Quaternion.AngleAxis(transform.rotation.eulerAngles.y, Vector3.up) * (new Vector3((prev.scale.x - scale.x) * 0.5f, 0, (prev.scale.z - scale.z) * 0.5f));
-            var modeSign = selected == TransformDirection.Xright || selected == TransformDirection.Zforward ? 1f : -1f;
-            transform.position = prev.position - modeSign * modSize;
-        }
-        */
+        
         var rotateAxis = axes[selected];
-        var mousePos = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, -Camera.main.transform.position.z));
+        var mousePos = Camera.main.ScreenToWorldPoint(new Vector3(Input.mousePosition.x, Input.mousePosition.y, Vector3.Distance(transform.position, Camera.main.transform.position)));
         //var mousePos = Camera.main.ScreenToWorldPoint(Input.mousePosition);   //이거 Orthographic 모드에서는 됨
 
         if (hasPreMousePos) {
@@ -436,7 +374,7 @@ public class TransformControl : MonoBehaviour {
             switch (selected) {
                 case TransformDirection.Xright:
                     size += scaleVec.x;
-                    if(Mathf.Abs(size) > 1f) {
+                    if(Mathf.Abs(size) > 1f) {  //최소 길이
                         scale.x = Mathf.Clamp(scale.x + Mathf.Round(size), 1, float.MaxValue);
                         //scale.x += Mathf.Round(size);
                         size = 0;

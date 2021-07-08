@@ -76,25 +76,29 @@ public class CameraController : MonoBehaviour {
 
         ModeUpdate();
         CameraUpdate();
-        CursorUpdate();
+        //CursorUpdate();
 
     }
     private void ModeUpdate() {
 
         if (Input.GetKeyDown(KeyCode.Mouse1) && mode == InputMouse.None) {
+            cursor.RotateCursor();
             mode = InputMouse.Rotate;
         }
         if (Input.GetKeyDown(KeyCode.Mouse2) && mode == InputMouse.None) {
+            cursor.TranslateCursor();
             mode = InputMouse.Translate;
         }
         if(Input.GetKeyUp(KeyCode.Mouse1) || Input.GetKeyUp(KeyCode.Mouse2)) {
+            cursor.DefaultCursor();
             mode = InputMouse.None;
         }
     }
 
+    /*      굳이 이 부분이 필요한가
     private void CursorUpdate() {
 
-        if(mode == InputMouse.Translate) {
+        if(mode == InputMouse.None && Input.GetKeyDown) {
             cursor.TranslateCursor();
         }
         if(mode == InputMouse.Rotate) {
@@ -104,7 +108,7 @@ public class CameraController : MonoBehaviour {
             cursor.DefaultCursor();
         }
     }
-
+    */
     private void CameraUpdate() {
 
         Move();
@@ -150,6 +154,8 @@ public class CameraController : MonoBehaviour {
 
             transform.position = Vector3.Lerp(transform.position,
                 new Vector3(transform.position.x, targetHeight, transform.position.z), Time.deltaTime * zoomSpeed);
+
+
         }
     }
     private void Rotation() {
@@ -158,9 +164,16 @@ public class CameraController : MonoBehaviour {
             return;
 
         if (useMouseRotation && Input.GetKey(mouseRotationKey)) {
-            float rotationX = transform.localEulerAngles.y + MouseAxis.x * Time.deltaTime * rotationSpeed;
+            
+            float rotationX = transform.eulerAngles.y + MouseAxis.x * Time.deltaTime * rotationSpeed;
             float rotationY = Mathf.Clamp(transform.localEulerAngles.x - MouseAxis.y * Time.deltaTime * rotationSpeed, 0f, 90f);
-            transform.localEulerAngles = new Vector3(rotationY, rotationX, 0f);
+            //float rotationY = transform.eulerAngles.x - MouseAxis.y * Time.deltaTime * rotationSpeed;
+            //transform.localEulerAngles = new Vector3(rotationY, rotationX, 0f);       결과적으로 잘못된 방식
+            transform.rotation = Quaternion.Euler(rotationY, rotationX, 0f);
+            
+            //transform.Rotate(0, MouseAxis.x * Time.deltaTime * rotationSpeed, 0);
+            //transform.Rotate(-MouseAxis.y * Time.deltaTime * rotationSpeed, 0, 0);
+
         }
     }
     private void LimitPosition() {
