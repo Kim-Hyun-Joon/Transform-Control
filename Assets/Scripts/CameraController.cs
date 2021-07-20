@@ -64,8 +64,8 @@ public class CameraController : MonoBehaviour {
     void Start() {
 
         ground = GameObject.FindWithTag("Ground").transform;
-        limitX = ground.localScale.x;
-        limitZ = ground.localScale.z;
+        limitX = ground.localScale.x * 2f;
+        limitZ = ground.localScale.z * 2f;
         mode = InputMouse.None;
         cam = transform.GetComponent<Camera>();
         cursor = transform.GetComponent<ChangeCursor>();
@@ -119,9 +119,6 @@ public class CameraController : MonoBehaviour {
 
     private void Move() {
 
-        if (mode == InputMouse.Rotate)
-            return;
-
         if (useKeyboardInput) {
             Vector3 desiredMove = new Vector3(KeyboardInput.x, 0, KeyboardInput.y);
 
@@ -131,6 +128,9 @@ public class CameraController : MonoBehaviour {
 
             transform.Translate(desiredMove, Space.Self);
         }
+        if (mode == InputMouse.Rotate)
+            return;
+
         if (usePanning && Input.GetKey(panningKey) && MouseAxis != Vector2.zero) {
             Vector3 desiredMove = new Vector3(-MouseAxis.x, 0, -MouseAxis.y);
 

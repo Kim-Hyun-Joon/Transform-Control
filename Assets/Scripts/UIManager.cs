@@ -8,13 +8,17 @@ public class UIManager : MonoBehaviour {
 
 	private static UIManager instance;
 
+    //infoPanel
     [SerializeField] private TransformPanel positionLabel;
     [SerializeField] private TransformPanel rotationLabel;
     [SerializeField] private TransformPanel scaleLabel;
     [SerializeField] private GameObject infoPanel;
     [SerializeField] private Dropdown modeBox;
     [SerializeField] private Text nameText;
-
+    //editPanel
+    [SerializeField] private Button trackButton;
+    [SerializeField] private Button facilityButton;
+    public GameObject brush;
     public static UIManager Instance {
 		get {
 			if (instance == null) instance = FindObjectOfType<UIManager>();
@@ -22,6 +26,10 @@ public class UIManager : MonoBehaviour {
 			return instance;
 		}
 	}
+
+    private void Awake() {
+        brush = GameObject.Find("Brush");
+    }
 
     public void SetTransformLabel(Transform transform) {
         positionLabel.SetTransform(transform.position);
@@ -100,6 +108,13 @@ public class UIManager : MonoBehaviour {
     public void UpdateNameText(string name) {
         nameText.text = name;
     }
+
+    public void OnClickButton() {
+        GameObject brushMarker = brush.transform.Find("BrushMarker").gameObject;
+        brushMarker.SetActive(true);
+        brushMarker.GetComponent<Brush>().enabled = true;       //onEnable 활성화
+    }
+
 
 }
 
