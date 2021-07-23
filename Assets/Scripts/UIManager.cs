@@ -19,6 +19,9 @@ public class UIManager : MonoBehaviour {
     [SerializeField] private Button trackButton;
     [SerializeField] private Button facilityButton;
     public GameObject brush;
+    public GameObject track;
+    public GameObject line;
+    [SerializeField] private GameObject trackPrefab;
     public static UIManager Instance {
 		get {
 			if (instance == null) instance = FindObjectOfType<UIManager>();
@@ -29,6 +32,7 @@ public class UIManager : MonoBehaviour {
 
     private void Awake() {
         brush = GameObject.Find("Brush");
+        track = GameObject.Find("Track");
     }
 
     public void SetTransformLabel(Transform transform) {
@@ -109,12 +113,20 @@ public class UIManager : MonoBehaviour {
         nameText.text = name;
     }
 
-    public void OnClickButton() {
+    public void OnEnableBrush() {
         GameObject brushMarker = brush.transform.Find("BrushMarker").gameObject;
         brushMarker.SetActive(true);
         brushMarker.GetComponent<Brush>().enabled = true;       //onEnable 활성화
     }
 
+    public void OnClickButtonLine() {
+        line = Instantiate(trackPrefab);
+        line.transform.SetParent(track.transform);
+
+
+
+        OnEnableBrush();
+    }
 
 }
 
